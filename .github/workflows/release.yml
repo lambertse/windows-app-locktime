@@ -40,6 +40,16 @@ jobs:
       - name: Install NSIS
         run: sudo apt-get install -y nsis
 
+      - name: Download nginx for Windows
+        run: |
+          NGINX_VERSION=1.26.3
+          wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.zip" -O nginx.zip
+          unzip -q nginx.zip "nginx-${NGINX_VERSION}/nginx.exe" "nginx-${NGINX_VERSION}/conf/mime.types"
+          mkdir -p installer/nginx/conf installer/nginx/html
+          cp "nginx-${NGINX_VERSION}/nginx.exe" installer/nginx/
+          cp "nginx-${NGINX_VERSION}/conf/mime.types" installer/nginx/conf/
+          cp -r frontend/dist/. installer/nginx/html/
+
       - name: Copy binaries to installer directory
         run: |
           cp backend/dist/locktime-svc.exe installer/

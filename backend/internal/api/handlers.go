@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,9 +20,8 @@ const serviceVersion = "1.0.0"
 
 // Server holds shared state accessible by all handlers.
 type Server struct {
-	DB          *sql.DB
-	StartedAt   time.Time
-	FrontendFS  fs.FS // optional embedded frontend; if set, SPA catch-all is registered
+	DB        *sql.DB
+	StartedAt time.Time
 }
 
 // SetupRouter creates and configures the gin router.
@@ -32,11 +30,20 @@ func SetupRouter(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	// CORS middleware — only allow requests from 127.0.0.1:8089
+	// CORS middleware — allow requests from the frontend server (8090) and the
+	// API server itself (8089). Empty origin covers same-origin and server-side
+	// proxy requests (e.g. the Vite dev proxy).
+	allowedOrigins := map[string]bool{
+		"http://127.0.0.1:8089": true,
+		"http://127.0.0.1:8090": true,
+		"http://localhost:8090":  true,
+	}
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		if origin == "" || origin == "http://127.0.0.1:8089" {
-			c.Header("Access-Control-Allow-Origin", "http://127.0.0.1:8089")
+		if origin == "" || allowedOrigins[origin] {
+			if origin != "" {
+				c.Header("Access-Control-Allow-Origin", origin)
+			}
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			c.Header("Access-Control-Allow-Headers", "Content-Type")
 		} else {
@@ -83,10 +90,6 @@ func SetupRouter(s *Server) *gin.Engine {
 		v1.GET("/system/processes", s.handleGetProcesses)
 		v1.POST("/system/browse", s.handleBrowse)
 	}
-
-	// SPA catch-all: serve index.html for non-API paths so React Router works
-	// on direct navigation / page refresh (e.g. /rules/:id/edit).
-	RegisterSPACatchAll(r, s.FrontendFS)
 
 	return r
 }
