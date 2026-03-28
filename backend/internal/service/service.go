@@ -21,7 +21,8 @@ const (
 	ServiceName    = "LockTimeSvc"
 	ServiceDisplay = "LockTime Application Guard"
 	DBPath         = `C:\ProgramData\locktime\locktime.db`
-	ListenAddr     = "127.0.0.1:8089"
+	ListenAddr     = "127.0.0.1:8089" // API only
+	FrontendAddr   = "127.0.0.1:8090" // nginx SPA
 )
 
 // LockTimeHandler implements svc.Handler.
@@ -51,17 +52,30 @@ func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s c
 		log.Printf("service: crash recovery: %v", err)
 	}
 
-	// Start HTTP API
-	server := &api.Server{
+	// Start API server (8089) — API routes only.
+	apiServer := &api.Server{
 		DB:        database,
 		StartedAt: startedAt,
 	}
-	router := api.SetupRouter(server)
+	apiRouter := api.SetupRouter(apiServer)
 	go func() {
-		if err := router.Run(ListenAddr); err != nil {
-			log.Printf("service: http server: %v", err)
+		if err := apiRouter.Run(ListenAddr); err != nil {
+			log.Printf("service: api server: %v", err)
 		}
 	}()
+
+	// Start nginx (8090) — serves the dist/ folder and proxies /api/ to 8089.
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("service: get executable path: %v", err)
+		return true, 1
+	}
+	nginxDir := filepath.Join(filepath.Dir(exePath), "nginx")
+	distPath := filepath.Join(filepath.Dir(exePath), "dist")
+	nginxProc, nginxErr := startNginx(nginxDir, distPath)
+	if nginxErr != nil {
+		log.Printf("service: nginx unavailable, frontend will not be served: %v", nginxErr)
+	}
 
 	// Get blocker path from config
 	cfg, _ := db.GetConfig(database)
@@ -92,6 +106,7 @@ func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s c
 		switch cr.Cmd {
 		case svc.Stop, svc.Shutdown:
 			s <- svc.Status{State: svc.StopPending}
+			stopNginx(nginxProc, nginxDir)
 			w.CloseAllSessions("natural")
 			action := "service_stop"
 			_ = db.InsertAuditLog(database, action, nil, nil)

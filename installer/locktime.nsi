@@ -45,6 +45,14 @@ Section "Install" SecInstall
   File "locktime-svc.exe"
   File "blocker.exe"
 
+  ; Copy frontend dist files
+  File /r "dist"
+
+  ; Copy nginx (nginx.conf is written at runtime by the service)
+  File /r "nginx"
+  CreateDirectory "$INSTDIR\nginx\logs"
+  CreateDirectory "$INSTDIR\nginx\temp"
+
   ; Register and start the Windows service
   ExecWait '"$INSTDIR\locktime-svc.exe" --install'
   ExecWait 'net start ${SERVICE_NAME}'
@@ -66,14 +74,14 @@ Section "Install" SecInstall
   ; Start Menu shortcut
   CreateDirectory "$SMPROGRAMS\LockTime"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
-    "URL" "http://localhost:8089"
+    "URL" "http://localhost:8090"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
     "IconFile" "$INSTDIR\locktime-svc.exe"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
     "IconIndex" "0"
 
   ; Open dashboard in browser
-  ExecShell "open" "http://localhost:8089"
+  ExecShell "open" "http://localhost:8090"
 
 SectionEnd
 
@@ -91,6 +99,8 @@ Section "Uninstall"
   Delete "$INSTDIR\locktime-svc.exe"
   Delete "$INSTDIR\blocker.exe"
   Delete "$INSTDIR\uninstall.exe"
+  RMDir /r "$INSTDIR\dist"
+  RMDir /r "$INSTDIR\nginx"
   RMDir "$INSTDIR"
 
   ; Remove Start Menu shortcuts
