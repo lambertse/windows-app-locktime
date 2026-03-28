@@ -1,4 +1,4 @@
-.PHONY: build-windows test clean tidy installer
+.PHONY: build-windows copy-frontend test clean tidy installer
 
 GOOS     = windows
 GOARCH   = amd64
@@ -7,7 +7,13 @@ LDFLAGS  = -s -w -H windowsgui
 
 DIST     = dist
 
-build-windows:
+# Copy the pre-built frontend dist into the embed directory.
+# Run "npm run build" in frontend/ first (CI does this as a separate step).
+copy-frontend:
+	rm -rf internal/frontend/dist
+	cp -r ../frontend/dist internal/frontend/dist
+
+build-windows: copy-frontend
 	@mkdir -p $(DIST)
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
 		go build -ldflags="$(LDFLAGS)" -o $(DIST)/locktime-svc.exe ./cmd/locktime-svc

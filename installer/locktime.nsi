@@ -66,14 +66,14 @@ Section "Install" SecInstall
   ; Start Menu shortcut
   CreateDirectory "$SMPROGRAMS\LockTime"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
-    "URL" "http://localhost:8089"
+    "URL" "http://localhost:8090"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
     "IconFile" "$INSTDIR\locktime-svc.exe"
   WriteIniStr "$SMPROGRAMS\LockTime\LockTime Dashboard.url" "InternetShortcut" \
     "IconIndex" "0"
 
   ; Open dashboard in browser
-  ExecShell "open" "http://localhost:8089"
+  ExecShell "open" "http://localhost:8090"
 
 SectionEnd
 

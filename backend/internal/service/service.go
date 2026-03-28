@@ -14,6 +14,7 @@ import (
 
 	"github.com/lambertse/windows-app-locktime/backend/internal/api"
 	"github.com/lambertse/windows-app-locktime/backend/internal/db"
+	"github.com/lambertse/windows-app-locktime/backend/internal/frontend"
 	"github.com/lambertse/windows-app-locktime/backend/internal/watcher"
 )
 
@@ -21,7 +22,8 @@ const (
 	ServiceName    = "LockTimeSvc"
 	ServiceDisplay = "LockTime Application Guard"
 	DBPath         = `C:\ProgramData\locktime\locktime.db`
-	ListenAddr     = "127.0.0.1:8089"
+	ListenAddr     = "127.0.0.1:8089" // API only
+	FrontendAddr   = "127.0.0.1:8090" // embedded SPA
 )
 
 // LockTimeHandler implements svc.Handler.
@@ -51,15 +53,23 @@ func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s c
 		log.Printf("service: crash recovery: %v", err)
 	}
 
-	// Start HTTP API
-	server := &api.Server{
+	// Start API server (8089) — no embedded frontend, API routes only.
+	apiServer := &api.Server{
 		DB:        database,
 		StartedAt: startedAt,
 	}
-	router := api.SetupRouter(server)
+	apiRouter := api.SetupRouter(apiServer)
 	go func() {
-		if err := router.Run(ListenAddr); err != nil {
-			log.Printf("service: http server: %v", err)
+		if err := apiRouter.Run(ListenAddr); err != nil {
+			log.Printf("service: api server: %v", err)
+		}
+	}()
+
+	// Start frontend server (8090) — serves embedded SPA, no API routes.
+	frontendRouter := api.NewFrontendRouter(frontend.FS())
+	go func() {
+		if err := frontendRouter.Run(FrontendAddr); err != nil {
+			log.Printf("service: frontend server: %v", err)
 		}
 	}()
 
