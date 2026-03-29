@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -26,41 +26,31 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
-
       - name: Setup Go 1.22
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Build Windows binaries
-        run: cd backend && make build-windows
+      - name: Build Windows binaries (Go)
+        run: cd backend && go build -o dist/locktime-svc.exe ./cmd/locktime-svc && go build -o dist/blocker.exe ./cmd/blocker
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
 
-      - name: Install NSIS
-        run: sudo apt-get install -y nsis
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
 
-      - name: Download nginx for Windows
-        run: |
-          NGINX_VERSION=1.26.3
-          wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.zip" -O nginx.zip
-          unzip -q nginx.zip "nginx-${NGINX_VERSION}/nginx.exe" "nginx-${NGINX_VERSION}/conf/mime.types"
-          mkdir -p installer/nginx/conf installer/nginx/html
-          cp "nginx-${NGINX_VERSION}/nginx.exe" installer/nginx/
-          cp "nginx-${NGINX_VERSION}/conf/mime.types" installer/nginx/conf/
-          cp -r frontend/dist/. installer/nginx/html/
-
-      - name: Copy binaries to installer directory
-        run: |
-          cp backend/dist/locktime-svc.exe installer/
-          cp backend/dist/blocker.exe installer/
-
-      - name: Build installer
-        run: makensis installer/locktime.nsi
+      - name: Build and package Electron app (Windows)
+        run: cd frontend && npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: installer/locktime-installer.exe
+          files: |
+            frontend/release/*.exe
+            frontend/release/*.yml
           generate_release_notes: true
           draft: false
