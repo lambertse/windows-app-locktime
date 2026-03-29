@@ -2,15 +2,23 @@
   "name": "locktime",
   "private": true,
   "version": "0.0.0",
+  "description": "LockTime — block or time-limit any app on a schedule",
+  "author": "lambertse",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lambertse/app-locktime.git"
+  },
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && tsc -p tsconfig.electron.json",
     "lint": "eslint .",
     "preview": "vite preview",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win:ci": "npm run build && electron-builder --win --publish always",
+    "dist:mac:ci": "npm run build && electron-builder --mac --publish always"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -42,7 +42,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build and package Electron app (Windows)
-        run: cd frontend && npm run dist:win
+        run: cd frontend && npm run dist:win:ci
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
