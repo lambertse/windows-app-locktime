@@ -1,236 +1,235 @@
-# 🔒 windows-app-locktime
+# LockTime
 
 > Stop yourself from opening League of Legends at 2 AM. Or any app, really.
 
-A lightweight Windows utility that locks or time-limits any application on a schedule — powered by a Go background service and a clean web dashboard.
+A lightweight utility that blocks or time-limits any application on a schedule — powered by a Go background service and a web dashboard. Runs on **Windows** and **macOS**.
 
 ![Dashboard Screenshot](docs/images/dashboard.png)
-<!-- TODO: Add actual screenshot after first run -->
 
 ---
 
-## ✨ Features
+## Features
 
-- **Time window locking** — block an app between specific hours (e.g. no League from 11 PM to 8 AM)
-- **Daily time limits** — allow up to N minutes per day, then it's locked for the rest of the day
-- **Both modes combined** — time window AND daily limit on the same app
-- **Warning before lock** — get notified X minutes before the lock kicks in
-- **Real-time dashboard** — see what's locked, how much time you've used, when you can play next
-- **Usage stats** — daily and weekly charts so you can see your habits
-- **System tray friendly** — runs as a Windows Service in the background, starts on boot
-- **Anti-bypass** — uses Windows IFEO (Image File Execution Options) so renaming the exe doesn't help
-
----
-
-## 📸 Screenshots
-
-| Dashboard | Rules | Stats |
-|-----------|-------|-------|
-| ![Dashboard](docs/images/dashboard.png) | ![Rules](docs/images/rules.png) | ![Stats](docs/images/stats.png) |
-<!-- TODO: Replace placeholders with actual screenshots -->
+- **Time window locking** — block an app outside allowed hours (e.g. no games after 11 PM)
+- **Daily time limits** — allow up to N minutes per day, then locked for the rest of the day
+- **Combined rules** — time window + daily limit on the same app
+- **Real-time dashboard** — see what's locked, time used today, and when it unlocks
+- **Usage stats** — daily and weekly charts
+- **Starts on boot** — runs as a Windows Service or macOS LaunchDaemon
+- **Anti-bypass (Windows)** — uses IFEO registry keys so renaming the exe doesn't help
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-windows-app-locktime/
-├── backend/                    # Go backend (Windows Service + REST API)
+app-locktime/
+├── backend/
 │   ├── cmd/
-│   │   ├── locktime-svc/      # Main service binary
-│   │   └── blocker/           # IFEO interceptor stub
+│   │   ├── locktime-svc/      # Service binary (Windows + macOS)
+│   │   └── blocker/           # IFEO interceptor stub (Windows only)
 │   └── internal/
-│       ├── api/               # HTTP handlers (gin)
+│       ├── api/               # REST API (Gin, port 8089)
 │       ├── db/                # SQLite schema + queries
 │       ├── engine/            # Rule evaluation + time window logic
-│       ├── watcher/           # Process monitoring
-│       └── service/           # Windows Service wiring
-└── frontend/                  # React/Vite web dashboard
+│       ├── watcher/           # Process monitor (cross-platform)
+│       └── service/           # Service lifecycle (platform-specific)
+└── frontend/                  # React/Vite dashboard (port 8090)
     └── src/
         ├── pages/             # Dashboard, Rules, Stats
         ├── components/        # UI components
         ├── api/               # Typed API client
-        └── lib/               # schedule-convert, utils
+        └── lib/               # Utilities
 ```
 
-**How it works:**
+### Ports
 
+| Port | Purpose |
+|------|---------|
+| `127.0.0.1:8089` | REST API (internal only) |
+| `127.0.0.1:8090` | Web dashboard |
+
+### How enforcement works
+
+**Windows:**
 1. `locktime-svc.exe` runs as a Windows Service (SYSTEM privileges)
-2. It registers `blocker.exe` as the IFEO "debugger" for locked apps
-3. When you try to launch a locked app, Windows runs `blocker.exe` instead
-4. `blocker.exe` checks the service → shows a block message or lets it through
-5. A process watcher also polls every second as a fallback (catches already-running processes)
-6. The web dashboard at `localhost:8089` lets you manage everything
+2. For each enabled rule it writes `blocker.exe` as the IFEO "debugger" for the target `.exe`
+3. When the user launches a blocked app, Windows runs `blocker.exe` instead
+4. `blocker.exe` queries the API — shows a block dialog or launches the real app
+5. The process watcher polls every second as a fallback for already-running processes
+6. The frontend is served by **nginx** on port 8090, which also proxies `/api/` to port 8089
+
+**macOS:**
+1. `locktime-svc` runs as a LaunchDaemon (root)
+2. No pre-launch interception (no IFEO equivalent on macOS)
+3. The process watcher polls every second and sends `SIGTERM` to blocked processes
+4. The frontend is served by a built-in Go HTTP server on port 8090
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Windows 10/11 (64-bit)
-- Administrator privileges (required for service install + registry writes)
-- Go 1.22+ (for building from source)
-- Node.js 18+ (for building frontend from source)
+| | Windows | macOS |
+|---|---|---|
+| OS | Windows 10/11 64-bit | macOS 12+ (Apple Silicon or Intel) |
+| Privileges | Administrator | root (sudo) |
+| Build deps | Go 1.22+, Node.js 18+ | Go 1.22+, Node.js 18+ |
 
-### Download (Recommended)
+### Install from Release
 
-Download the latest installer from [Releases](https://github.com/lambertse/windows-app-locktime/releases).
+Download the latest release from [Releases](https://github.com/lambertse/app-locktime/releases).
 
-1. Download `locktime-installer.exe`
-2. Run as Administrator
-3. The service installs and starts automatically
-4. Your browser will open `http://localhost:8089` — the dashboard is ready
+**Windows** — run the installer as Administrator:
+```
+locktime-installer.exe
+```
+The service installs, starts automatically, and opens `http://localhost:8090`.
+
+**macOS** — install the daemon manually after building (see Build from Source):
+```bash
+sudo ./locktime-svc --install
+```
 
 ### Build from Source
 
-**1. Clone the repo**
 ```bash
-git clone https://github.com/lambertse/windows-app-locktime.git
-cd windows-app-locktime
+git clone https://github.com/lambertse/app-locktime.git
+cd app-locktime
 ```
 
-**2. Build the frontend**
+**Frontend:**
 ```bash
 cd frontend
 npm install
-npm run build
-# Output: frontend/dist/
+npm run build        # output: frontend/dist/
 ```
 
-**3. Build the backend (cross-compile from any OS)**
+**Backend — Windows:**
 ```bash
 cd backend
-make build-windows
-# Output: bin/locktime-svc.exe, bin/blocker.exe
+make build-windows   # output: dist/locktime-svc.exe, dist/blocker.exe
 ```
 
-Or on Windows directly:
+**Backend — macOS:**
 ```bash
 cd backend
-go build -o bin/locktime-svc.exe ./cmd/locktime-svc
-go build -o bin/blocker.exe ./cmd/blocker
-```
-
-**4. Install the service (run as Administrator)**
-```powershell
-# Install and start the service
-.\bin\locktime-svc.exe --install
-
-# Open the dashboard
-start http://localhost:8089
+make build-macos     # output: dist/locktime-svc
 ```
 
 ---
 
-## 🖥️ Usage
+## Usage
 
-### Open the Dashboard
+### Open the dashboard
 
-Once the service is running, open your browser and go to:
+Once the service is running:
 ```
-http://localhost:8089
+http://localhost:8090
 ```
 
-### Add Your First Rule
+### Add a rule
 
-1. Click **"Add Rule"** in the sidebar
-2. **Step 1 — Pick the app:** Select from running processes or browse to the `.exe` file
-3. **Step 2 — Set the limit:**
-   - **Time window:** choose which hours the app is blocked, and which days
-   - **Daily limit:** set max minutes per day
-   - **Both:** combine them
-4. Save — the rule is active immediately, no restart needed
+1. Click **Add Rule** in the sidebar
+2. Pick the app — from the running process list or by browsing to the executable
+3. Set the limit:
+   - **Time window** — which hours and days the app is allowed
+   - **Daily limit** — max minutes per day
+   - **Both** — combine them
+4. Save — the rule is active immediately
 
-### Manage the Service
+### Manage the service
 
+**Windows (PowerShell, Administrator):**
 ```powershell
-# Install + start
-.\locktime-svc.exe --install
+.\locktime-svc.exe --install     # install + start
+.\locktime-svc.exe --uninstall   # stop + remove
+.\locktime-svc.exe --run         # foreground / debug mode
+```
 
-# Uninstall
-.\locktime-svc.exe --uninstall
-
-# Run in foreground (dev/debug)
-.\locktime-svc.exe --run
+**macOS (Terminal, sudo):**
+```bash
+sudo ./locktime-svc --install    # write LaunchDaemon plist + load
+sudo ./locktime-svc --uninstall  # unload + remove plist
+./locktime-svc --run             # foreground / debug mode
 ```
 
 ---
 
-## 🛠️ Development
+## Development
 
-### Run backend locally (Linux/Mac)
-
-The backend compiles and runs on Linux/Mac for development — Windows-specific features (IFEO, native file picker, process termination) are stubbed out automatically via build tags.
+### Run the backend locally
 
 ```bash
 cd backend
 go run ./cmd/locktime-svc --run
-# API available at http://localhost:8089
+# API at http://127.0.0.1:8089
 ```
 
-### Run frontend dev server
+On macOS this runs the full service (process watcher + SPA server). Windows-specific features (IFEO, native file picker) are stubbed out on non-Windows platforms via build tags.
+
+### Run the frontend dev server
 
 ```bash
 cd frontend
 npm run dev
 # Dev server at http://localhost:5173
-# API calls proxied to http://127.0.0.1:8089
+# /api/* proxied to http://127.0.0.1:8089
 ```
 
-### Run tests
+### Tests
 
 ```bash
 cd backend
-go test ./...
-
-# With coverage
-make test-cover
+make test            # engine tests (platform-neutral)
+make test-cover      # with HTML coverage report
 ```
 
 ---
 
-## ⚙️ Configuration
+## Data storage
 
-Rules and config are stored in a SQLite database at:
-```
-C:\ProgramData\locktime\locktime.db
-```
+| Platform | Database path |
+|----------|--------------|
+| Windows  | `C:\ProgramData\locktime\locktime.db` |
+| macOS    | `/Library/Application Support/locktime/locktime.db` |
 
-The database is managed entirely through the web dashboard — no manual editing needed.
-
----
-
-## 🔐 Security Notes
-
-- The service runs as `SYSTEM` — this is required to write IFEO registry keys and terminate processes owned by any user
-- The API only accepts connections from `127.0.0.1` — it is not accessible from other machines on the network
-- IFEO keys are written to `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\<exe>`
-- Config directory (`C:\ProgramData\locktime\`) is ACL'd to admin-only write access
-- NTP is checked on startup — if your system clock is off by more than 5 minutes, the service enforces the most restrictive state
+The database is managed entirely through the dashboard — no manual editing needed.
 
 ---
 
-## 🗺️ Roadmap
+## Security notes
 
-- [x] Time window locking (v1)
-- [x] Daily time limits (v1)
-- [x] Web dashboard (v1)
-- [x] Usage stats (v1)
-- [ ] PIN override — unlock temporarily with a password (v2)
-- [ ] System tray icon (v2)
-- [x] Pre-built NSIS installer (v2)
-- [ ] Notification toasts before lock kicks in (v2)
-- [ ] Multiple profiles (work mode / weekend mode) (v3)
+- The API only binds to `127.0.0.1` — not accessible from other machines
+- **Windows:** service runs as `SYSTEM` (required for IFEO registry writes and cross-user process termination)
+- **macOS:** daemon runs as `root` (required for terminating processes owned by any user)
+- NTP skew protection: if the system clock is more than 5 minutes off, the most restrictive state is enforced
+- **Windows IFEO path:** `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\<exe>`
 
 ---
 
-## 🤝 Contributing
+## Roadmap
 
-PRs welcome. Please open an issue first for anything significant.
+- [x] Time window locking
+- [x] Daily time limits
+- [x] Web dashboard
+- [x] Usage stats
+- [x] Windows installer (NSIS)
+- [x] macOS support
+- [ ] PIN override — unlock temporarily with a password
+- [ ] Notification before lock kicks in
+- [ ] System tray icon
+- [ ] Multiple profiles (work / weekend mode)
 
 ---
 
-## 📄 License
+## Contributing
+
+PRs welcome. Open an issue first for anything significant.
+
+---
+
+## License
 
 MIT — see [LICENSE](LICENSE)

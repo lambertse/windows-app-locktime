@@ -1,4 +1,4 @@
-.PHONY: build-windows test clean tidy installer
+.PHONY: build-windows build-macos test clean tidy installer
 
 GOOS     = windows
 GOARCH   = amd64
@@ -14,6 +14,12 @@ build-windows:
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
 		go build -ldflags="$(LDFLAGS)" -o $(DIST)/blocker.exe ./cmd/blocker
 	@echo "Built: $(DIST)/locktime-svc.exe  $(DIST)/blocker.exe"
+
+build-macos:
+	@mkdir -p $(DIST)
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 \
+		go build -ldflags="-s -w" -o $(DIST)/locktime-svc ./cmd/locktime-svc
+	@echo "Built: $(DIST)/locktime-svc"
 
 # Run tests on the host (Linux/macOS — engine tests are platform-neutral)
 test:
