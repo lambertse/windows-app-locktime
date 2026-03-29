@@ -55,8 +55,6 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
 
-afterSign: build/notarize.js
-
 dmg:
   contents:
     - x: 130
