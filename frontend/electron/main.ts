@@ -7,6 +7,9 @@ import {
   ipcMain,
   session,
 } from 'electron'
+
+// Remove default application menu (File, Edit, View, Window, Help)
+Menu.setApplicationMenu(null)
 import path from 'path'
 import { execFile, spawn } from 'child_process'
 
@@ -140,11 +143,14 @@ function createTray(): void {
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1280,
     height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     show: false,
+    title: 'LockTime',
+    autoHideMenuBar: true,
     titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
     webPreferences: {
       nodeIntegration: false,
