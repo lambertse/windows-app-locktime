@@ -1,0 +1,65 @@
+appId: com.locktime.app
+productName: LockTime
+
+directories:
+  output: release
+
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+
+extraResources:
+  - from: public/icons/
+    to: icons/
+    filter:
+      - "**/*"
+  - from: ../backend/dist/
+    to: bin/
+    filter:
+      - "locktime-svc.exe"
+      - "blocker.exe"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: public/icons/icon.ico
+  requestedExecutionLevel: requireAdministrator
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LockTime
+  include: build/installer.nsh
+  uninstallDisplayName: LockTime
+  deleteAppDataOnUninstall: false
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: public/icons/icon.icns
+  category: public.app-category.utilities
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
