@@ -13,6 +13,7 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+let isQuitting = false
 
 // Enforce single instance
 const gotLock = app.requestSingleInstanceLock()
@@ -123,7 +124,7 @@ function createWindow(): void {
 
   // Minimize to tray on close
   mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
+    if (!isQuitting) {
       event.preventDefault()
       mainWindow?.hide()
     }
@@ -172,7 +173,7 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
-  ;(app as typeof app & { isQuitting: boolean }).isQuitting = true
+  isQuitting = true
 })
 
 // Keep app running when all windows closed (we use tray)
