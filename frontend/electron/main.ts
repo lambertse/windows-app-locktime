@@ -1,0 +1,183 @@
+import {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  nativeImage,
+  ipcMain,
+  session,
+} from 'electron'
+import path from 'path'
+
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+
+let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+
+// Enforce single instance
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+  process.exit(0)
+}
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (!mainWindow.isVisible()) mainWindow.show()
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
+
+function createTray(): void {
+  const iconPath = isDev
+    ? path.join(__dirname, '..', 'public', 'icons', 'icon.ico')
+    : path.join(process.resourcesPath, 'icons', 'icon.ico')
+
+  let trayIcon = nativeImage.createEmpty()
+  try {
+    trayIcon = nativeImage.createFromPath(iconPath)
+  } catch {
+    // icon file may not exist yet — tray will use empty icon
+  }
+
+  tray = new Tray(trayIcon)
+  tray.setToolTip('LockTime')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      },
+    },
+    {
+      label: 'Hide',
+      click: () => {
+        mainWindow?.hide()
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit()
+      },
+    },
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus()
+      } else {
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    }
+  })
+}
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    show: false,
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  // Apply CSP
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; " +
+            "script-src 'self'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "connect-src 'self' http://127.0.0.1:8089; " +
+            "img-src 'self' data:; " +
+            "font-src 'self' data:;",
+        ],
+      },
+    })
+  })
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
+  })
+
+  // Minimize to tray on close
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173')
+    mainWindow.webContents.openDevTools()
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
+  }
+}
+
+// IPC handlers
+ipcMain.on('window:minimize', () => {
+  mainWindow?.minimize()
+})
+
+ipcMain.on('window:hide', () => {
+  mainWindow?.hide()
+})
+
+ipcMain.on('window:quit', () => {
+  app.quit()
+})
+
+app.whenReady().then(() => {
+  app.setName('LockTime')
+
+  app.setLoginItemSettings({
+    openAtLogin: false,
+    name: 'LockTime',
+  })
+
+  createWindow()
+  createTray()
+
+  app.on('activate', () => {
+    // macOS: re-create window if dock icon clicked and no windows open
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    } else {
+      mainWindow?.show()
+    }
+  })
+})
+
+app.on('before-quit', () => {
+  ;(app as typeof app & { isQuitting: boolean }).isQuitting = true
+})
+
+// Keep app running when all windows closed (we use tray)
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    // Don't quit — stay in tray
+  }
+})
