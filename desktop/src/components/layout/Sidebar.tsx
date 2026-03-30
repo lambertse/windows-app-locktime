@@ -27,7 +27,7 @@ export function Sidebar() {
       <div className="px-4 py-5 border-b border-zinc-800">
         <div className="flex items-center gap-2.5">
           <Shield className="w-5 h-5 text-cyan-400" />
-          <span className="font-semibold text-zinc-100 tracking-tight">LockTime</span>
+          <span className="font-semibold text-zinc-100 tracking-tight">AppLocker</span>
         </div>
       </div>
 

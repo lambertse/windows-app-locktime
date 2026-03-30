@@ -1,5 +1,6 @@
-appId: com.locktime.app
-productName: LockTime
+appId: com.applocker.app
+productName: AppLocker
+artifactName: "${productName}.${ext}"
 
 directories:
   output: release
@@ -34,9 +35,9 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: LockTime
+  shortcutName: AppLocker
   include: build/installer.nsh
-  uninstallDisplayName: LockTime
+  uninstallDisplayName: AppLocker
   deleteAppDataOnUninstall: false
 
 mac:
@@ -62,6 +63,7 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
 
 dmg:
+  artifactName: "${productName}.${ext}"
   contents:
     - x: 130
       y: 220

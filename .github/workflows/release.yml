@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: desktop/package-lock.json
 
       - name: Setup Go 1.22
         uses: actions/setup-go@v5
@@ -42,18 +42,18 @@ jobs:
           GOARCH: amd64
           CGO_ENABLED: '0'
 
-      - name: Install frontend dependencies
-        working-directory: frontend
+      - name: Install desktop dependencies
+        working-directory: desktop
         run: npm ci
 
       - name: Build and package Electron app (Windows)
-        working-directory: frontend
+        working-directory: desktop
         run: npm run dist:win
 
       - name: Upload Windows installer to release
         uses: softprops/action-gh-release@v2
         with:
-          files: frontend/release/*.exe
+          files: desktop/release/*.exe
           generate_release_notes: true
 
   # ── macOS ──────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: desktop/package-lock.json
 
       - name: Setup Go 1.22
         uses: actions/setup-go@v5
@@ -85,12 +85,12 @@ jobs:
           lipo -create -output dist/locktime-svc dist/locktime-svc-arm64 dist/locktime-svc-amd64
           rm dist/locktime-svc-arm64 dist/locktime-svc-amd64
 
-      - name: Install frontend dependencies
-        working-directory: frontend
+      - name: Install desktop dependencies
+        working-directory: desktop
         run: npm ci
 
       - name: Build and package Electron app (macOS)
-        working-directory: frontend
+        working-directory: desktop
         run: npm run dist:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -99,5 +99,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            frontend/release/*.dmg
-            frontend/release/*-mac.zip
+            desktop/release/*.dmg

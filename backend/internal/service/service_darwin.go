@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	ServiceLabel   = "com.lambertse.locktime"
-	DBPath         = "/Library/Application Support/locktime/locktime.db"
+	ServiceLabel   = "com.lambertse.applocker"
+	DBPath         = "/Library/Application Support/AppLocker/applocker.db"
 	ListenAddr     = "127.0.0.1:8089"
 	FrontendAddr   = "127.0.0.1:8090"
-	PlistPath      = "/Library/LaunchDaemons/com.lambertse.locktime.plist"
-	LogDir         = "/var/log/locktime"
-	installHtmlDir = "/usr/local/share/locktime/html"
+	PlistPath      = "/Library/LaunchDaemons/com.lambertse.applocker.plist"
+	LogDir         = "/var/log/applocker"
+	installHtmlDir = "/usr/local/share/applocker/html"
 )
 
 // htmlDir returns the frontend dist directory. When installed via .pkg the
@@ -45,7 +45,7 @@ const launchdPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>com.lambertse.locktime</string>
+	<string>com.lambertse.applocker</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>{{.ExePath}}</string>
@@ -56,9 +56,9 @@ const launchdPlist = `<?xml version="1.0" encoding="UTF-8"?>
 	<key>KeepAlive</key>
 	<true/>
 	<key>StandardOutPath</key>
-	<string>/var/log/locktime/locktime.log</string>
+	<string>/var/log/applocker/applocker.log</string>
 	<key>StandardErrorPath</key>
-	<string>/var/log/locktime/locktime.error.log</string>
+	<string>/var/log/applocker/applocker.error.log</string>
 </dict>
 </plist>
 `
@@ -103,7 +103,7 @@ func RunService() error {
 	w := watcher.New(database)
 	w.Start()
 
-	log.Printf("service: locktime started (api=%s frontend=%s)", ListenAddr, FrontendAddr)
+	log.Printf("service: applocker started (api=%s frontend=%s)", ListenAddr, FrontendAddr)
 
 	// Block until the OS or launchd sends a stop signal.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)

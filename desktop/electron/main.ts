@@ -21,7 +21,7 @@ let isQuitting = false
 
 // ─── Service Management ─────────────────────────────────────────────────────
 
-const SERVICE_NAME = 'LockTimeSvc'
+const SERVICE_NAME = 'AppLockerSvc'
 const API_URL = 'http://127.0.0.1:8089/api/v1/status'
 
 function getServiceExePath(): string {
@@ -50,7 +50,7 @@ async function ensureServiceRunning(): Promise<void> {
   const svcPath = getServiceExePath()
   if (!svcPath) return
 
-  console.log('[LockTime] Starting background service...')
+  console.log('[AppLocker] Starting background service...')
   // Try sc start first (service already installed)
   await new Promise<void>((resolve) => {
     execFile('sc', ['start', SERVICE_NAME], () => resolve())
@@ -62,14 +62,14 @@ async function ensureServiceRunning(): Promise<void> {
     try {
       const res = await fetch(API_URL)
       if (res.ok) {
-        console.log('[LockTime] Service is up')
+        console.log('[AppLocker] Service is up')
         return
       }
     } catch {
       // not ready yet
     }
   }
-  console.warn('[LockTime] Service did not respond in time')
+  console.warn('[AppLocker] Service did not respond in time')
 }
 
 // Enforce single instance
@@ -100,7 +100,7 @@ function createTray(): void {
   }
 
   tray = new Tray(trayIcon)
-  tray.setToolTip('LockTime')
+  tray.setToolTip('AppLocker')
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -149,7 +149,7 @@ function createWindow(): void {
     maximizable: false,
     fullscreenable: false,
     show: false,
-    title: 'LockTime',
+    title: 'AppLocker',
     autoHideMenuBar: true,
     titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
     webPreferences: {
@@ -212,11 +212,11 @@ ipcMain.on('window:quit', () => {
 })
 
 app.whenReady().then(async () => {
-  app.setName('LockTime')
+  app.setName('AppLocker')
 
   app.setLoginItemSettings({
     openAtLogin: false,
-    name: 'LockTime',
+    name: 'AppLocker',
   })
 
   // Ensure the Go backend service is running before showing the window
