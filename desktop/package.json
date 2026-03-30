@@ -1,8 +1,8 @@
 {
-  "name": "locktime",
+  "name": "AppLocker",
   "private": true,
   "version": "0.0.0",
-  "description": "LockTime — block or time-limit any app on a schedule",
+  "description": "AppLocker — block or time-limit any app on a schedule",
   "author": "lambertse",
   "repository": {
     "type": "git",

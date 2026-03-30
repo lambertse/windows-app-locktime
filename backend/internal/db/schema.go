@@ -81,7 +81,7 @@ INSERT OR IGNORE INTO config VALUES ('ntp_server', 'pool.ntp.org');
 INSERT OR IGNORE INTO config VALUES ('ntp_check_interval_seconds', '300');
 INSERT OR IGNORE INTO config VALUES ('poll_interval_ms', '1000');
 INSERT OR IGNORE INTO config VALUES ('log_retention_days', '90');
-INSERT OR IGNORE INTO config VALUES ('blocker_exe_path', 'C:\ProgramData\locktime\blocker.exe');
+INSERT OR IGNORE INTO config VALUES ('blocker_exe_path', 'C:\ProgramData\AppLocker\blocker.exe');
 `
 
 // Open opens (or creates) the SQLite DB at the given path and applies the schema.

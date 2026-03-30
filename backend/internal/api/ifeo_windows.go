@@ -36,7 +36,7 @@ func reconcileIFEOForRule(s *Server, ruleID string) {
 
 	// Get blocker path from config
 	cfg, _ := db.GetConfig(s.DB)
-	blockerPath := `C:\ProgramData\locktime\blocker.exe`
+	blockerPath := `C:\ProgramData\AppLocker\blocker.exe`
 	if v, ok := cfg["blocker_exe_path"]; ok && v != "" {
 		blockerPath = v
 	}

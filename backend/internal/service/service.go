@@ -18,18 +18,18 @@ import (
 )
 
 const (
-	ServiceName    = "LockTimeSvc"
-	ServiceDisplay = "LockTime Application Guard"
-	DBPath         = `C:\ProgramData\locktime\locktime.db`
+	ServiceName    = "AppLockerSvc"
+	ServiceDisplay = "AppLocker"
+	DBPath         = `C:\ProgramData\AppLocker\applocker.db`
 	ListenAddr     = "127.0.0.1:8089" // API only
 	FrontendAddr   = "127.0.0.1:8090" // nginx SPA
 )
 
-// LockTimeHandler implements svc.Handler.
-type LockTimeHandler struct{}
+// AppLockerHandler implements svc.Handler.
+type AppLockerHandler struct{}
 
 // Execute is called by the Windows SCM when the service starts.
-func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- svc.Status) (svcSpecificEC bool, exitCode uint32) {
+func (h *AppLockerHandler) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- svc.Status) (svcSpecificEC bool, exitCode uint32) {
 	s <- svc.Status{State: svc.StartPending}
 
 	startedAt := time.Now()
@@ -78,7 +78,7 @@ func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s c
 
 	// Get blocker path from config
 	cfg, _ := db.GetConfig(database)
-	blockerPath := `C:\ProgramData\locktime\blocker.exe`
+	blockerPath := `C:\ProgramData\AppLocker\blocker.exe`
 	if v, ok := cfg["blocker_exe_path"]; ok && v != "" {
 		blockerPath = v
 	}
@@ -120,7 +120,7 @@ func (h *LockTimeHandler) Execute(args []string, r <-chan svc.ChangeRequest, s c
 
 // RunService runs the Windows service.
 func RunService() error {
-	return svc.Run(ServiceName, &LockTimeHandler{})
+	return svc.Run(ServiceName, &AppLockerHandler{})
 }
 
 // Install installs the service via SCM.

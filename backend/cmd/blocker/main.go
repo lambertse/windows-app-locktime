@@ -70,8 +70,8 @@ func main() {
 		nextUnlock = *resp.NextUnlockAt
 	}
 
-	msg := fmt.Sprintf("LockTime: %s is blocked until %s.", ruleName, nextUnlock)
-	showMessageBox("LockTime — Access Blocked", msg)
+	msg := fmt.Sprintf("AppLocker: %s is blocked until %s.", ruleName, nextUnlock)
+	showMessageBox("AppLocker — Access Blocked", msg)
 	os.Exit(0)
 }
 
@@ -126,7 +126,7 @@ func launchTarget(exe string, args []string) {
 		nil, nil, false, 0, nil, nil,
 		&si, &pi)
 	if err != nil {
-		showMessageBox("LockTime Error", fmt.Sprintf("Failed to launch %s: %v", exe, err))
+		showMessageBox("AppLocker Error", fmt.Sprintf("Failed to launch %s: %v", exe, err))
 		os.Exit(1)
 	}
 
