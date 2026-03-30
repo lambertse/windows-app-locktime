@@ -33,33 +33,32 @@ jobs:
           go-version: '1.22'
 
       - name: Build Windows binaries (Go)
-        run: cd backend && go build -o dist/locktime-svc.exe ./cmd/locktime-svc && go build -o dist/blocker.exe ./cmd/blocker
+        working-directory: backend
+        run: |
+          go build -ldflags="-s -w -H windowsgui" -o dist/locktime-svc.exe ./cmd/locktime-svc
+          go build -ldflags="-s -w -H windowsgui" -o dist/blocker.exe ./cmd/blocker
         env:
           GOOS: windows
           GOARCH: amd64
-          CGO_ENABLED: 0
+          CGO_ENABLED: '0'
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        working-directory: frontend
+        run: npm ci
 
       - name: Build and package Electron app (Windows)
-        run: cd frontend && npm run dist:win:ci
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: frontend
+        run: npm run dist:win
 
-      - name: Create GitHub Release
+      - name: Upload Windows installer to release
         uses: softprops/action-gh-release@v2
         with:
-          files: frontend/release/*.exe 
+          files: frontend/release/*.exe
           generate_release_notes: true
-          draft:  false
-
-      # electron-builder --publish always handles release creation + artifact upload
 
   # ── macOS ──────────────────────────────────────────────────────────────────
   build-macos:
     runs-on: macos-latest
-    needs: build-windows   # ensures the GitHub Release exists before we upload
 
     steps:
       - name: Checkout code
@@ -77,45 +76,28 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
-
-      - name: Build macOS universal binary
+      - name: Build macOS universal binary (Go)
+        working-directory: backend
         run: |
-          cd backend
           mkdir -p dist
           GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o dist/locktime-svc-arm64 ./cmd/locktime-svc
           GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o dist/locktime-svc-amd64 ./cmd/locktime-svc
           lipo -create -output dist/locktime-svc dist/locktime-svc-arm64 dist/locktime-svc-amd64
+          rm dist/locktime-svc-arm64 dist/locktime-svc-amd64
 
-      - name: Assemble package payload
-        run: |
-          mkdir -p pkg-root/usr/local/bin
-          mkdir -p pkg-root/usr/local/share/locktime/html
-          cp backend/dist/locktime-svc pkg-root/usr/local/bin/locktime-svc
-          chmod +x pkg-root/usr/local/bin/locktime-svc
-          cp -r frontend/dist/. pkg-root/usr/local/share/locktime/html/
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
-      - name: Create installer scripts
-        run: |
-          mkdir -p pkg-scripts
-          cat > pkg-scripts/postinstall << 'EOF'
-          #!/bin/bash
-          /usr/local/bin/locktime-svc --install
-          EOF
-          chmod +x pkg-scripts/postinstall
+      - name: Build and package Electron app (macOS)
+        working-directory: frontend
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Build .pkg installer
-        run: |
-          pkgbuild \
-            --root pkg-root \
-            --scripts pkg-scripts \
-            --identifier com.lambertse.locktime \
-            --version "$VERSION" \
-            --install-location / \
-            "locktime-${VERSION}-macos.pkg"
-
-      - name: Upload macOS package to release
+      - name: Upload macOS packages to release
         uses: softprops/action-gh-release@v2
         with:
-          files: locktime-${{ env.VERSION }}-macos.pkg
+          files: |
+            frontend/release/*.dmg
+            frontend/release/*-mac.zip

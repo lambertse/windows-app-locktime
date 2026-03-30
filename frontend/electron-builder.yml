@@ -14,13 +14,14 @@ extraResources:
     to: icons/
     filter:
       - "**/*"
-  - from: ../backend/dist/
-    to: bin/
-    filter:
-      - "locktime-svc.exe"
-      - "blocker.exe"
 
 win:
+  extraResources:
+    - from: ../backend/dist/
+      to: bin/
+      filter:
+        - "locktime-svc.exe"
+        - "blocker.exe"
   target:
     - target: nsis
       arch:
@@ -39,6 +40,11 @@ nsis:
   deleteAppDataOnUninstall: false
 
 mac:
+  extraResources:
+    - from: ../backend/dist/
+      to: bin/
+      filter:
+        - "locktime-svc"
   target:
     - target: dmg
       arch:
