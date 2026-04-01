@@ -30,41 +30,68 @@ let isQuitting = false
 
 // ─── RPC Client ──────────────────────────────────────────────────────────────
 const rpc = new LockTimeRPCClient(RPC_ENDPOINT)
+console.log(`[LockTime] RPC client initialized with endpoint ${RPC_ENDPOINT}`)
 // ─── Service Management ──────────────────────────────────────────────────────
 
-const SERVICE_NAME = 'AppLockerSvc'
+const SERVICE_NAME_WIN   = 'AppLockerSvc'
+const SERVICE_NAME_MAC   = 'com.lambertse.locktime'
 
 function getServiceExePath(): string {
   if (isDev) return ''
+  if (process.platform === 'darwin') {
+    return path.join(process.resourcesPath, 'bin', 'locktime-svc')
+  }
   return path.join(process.resourcesPath, 'bin', 'locktime-svc.exe')
 }
 
 function isServiceRunning(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (process.platform !== 'win32') {
+    if (process.platform === 'win32') {
+      execFile('sc', ['query', SERVICE_NAME_WIN], (err, stdout) => {
+        resolve(!err && stdout.includes('RUNNING'))
+      })
+    } else if (process.platform === 'darwin') {
+      // `launchctl list <label>` exits 0 if the service is loaded/running
+      execFile('launchctl', ['list', SERVICE_NAME_MAC], (err) => {
+        resolve(!err)
+      })
+    } else {
       resolve(false)
-      return
     }
-    execFile('sc', ['query', SERVICE_NAME], (err, stdout) => {
-      resolve(!err && stdout.includes('RUNNING'))
-    })
   })
 }
 
 async function ensureServiceRunning(): Promise<void> {
-  if (isDev || process.platform !== 'win32') return
+  console.log('[LockTime] Ensuring service is running...')
+  // In dev mode the developer runs the backend manually; just attempt a lazy
+  // connect so the first RPC call doesn't block on reconnection.
+  if (isDev) {
+    try { await rpc.connect() } catch { /* backend may not be up yet */ }
+    return
+  }
 
-  const running = await isServiceRunning()
-  if (!running) {
-    const svcPath = getServiceExePath()
-    if (svcPath) {
+  if (process.platform === 'win32') {
+    const running = await isServiceRunning()
+    if (!running) {
+      const svcPath = getServiceExePath()
+      if (svcPath) {
+        await new Promise<void>((resolve) => {
+          execFile('sc', ['start', SERVICE_NAME_WIN], () => resolve())
+        })
+      }
+    }
+  } else if (process.platform === 'darwin') {
+    const running = await isServiceRunning()
+    if (!running) {
+      // The launchd plist must already be installed by the app installer.
+      // Just kick the service; launchd will keep it alive thereafter.
       await new Promise<void>((resolve) => {
-        execFile('sc', ['start', SERVICE_NAME], () => resolve())
+        execFile('launchctl', ['start', SERVICE_NAME_MAC], () => resolve())
       })
     }
   }
 
-  // Wait for the RPC server to become reachable (replaces HTTP polling)
+  // Wait for the RPC server to become reachable (all platforms)
   for (let i = 0; i < 20; i++) {
     try {
       await rpc.connect()
@@ -152,22 +179,26 @@ function createWindow(): void {
     },
   })
 
-  // Tighten CSP — no more HTTP 8089 origin needed
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; " +
-            "script-src 'self'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "connect-src 'self'; " +
-            "img-src 'self' data:; " +
-            "font-src 'self' data:;",
-        ],
-      },
+  // Apply a strict CSP in production only.
+  // In dev, Vite injects inline scripts (React Fast Refresh preamble) that
+  // would be blocked by script-src 'self', causing a blank renderer.
+  if (!isDev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; " +
+              "script-src 'self'; " +
+              "style-src 'self' 'unsafe-inline'; " +
+              "connect-src 'self'; " +
+              "img-src 'self' data:; " +
+              "font-src 'self' data:;",
+          ],
+        },
+      })
     })
-  })
+  }
 
   mainWindow.once('ready-to-show', () => mainWindow?.show())
 
@@ -179,7 +210,9 @@ function createWindow(): void {
   })
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+    // vite-plugin-electron sets VITE_DEV_SERVER_URL to the actual Vite server
+    // URL (including port), so we don't need to hardcode it.
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:8090')
     mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
