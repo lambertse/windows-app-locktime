@@ -17,4 +17,4 @@ std::error_code uninstall_service();
 /// On macOS: runs an event loop with signal handling (launchd keeps it alive).
 int run_service();
 
-} // namespace locktime
+}  // namespace locktime
