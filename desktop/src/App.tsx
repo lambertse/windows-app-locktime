@@ -1,6 +1,8 @@
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { TitleBar } from './components/layout/TitleBar'
 import { Sidebar } from './components/layout/Sidebar'
 import { Dashboard } from './pages/Dashboard'
 import { Rules } from './pages/Rules'
@@ -17,33 +19,47 @@ const queryClient = new QueryClient({
   },
 })
 
+function AppShell() {
+  const { theme } = useTheme()
+
+  return (
+    <BrowserRouter>
+      <div className="flex flex-col h-screen" style={{ background: 'var(--background)' }}>
+        <TitleBar />
+        <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/rules/new" element={<AddRule />} />
+            <Route path="/rules/:id/edit" element={<EditRule />} />
+            <Route path="/stats" element={<Stats />} />
+          </Routes>
+        </main>
+        </div>
+      </div>
+      <Toaster
+        position="top-right"
+        theme={theme}
+        toastOptions={{
+          style: {
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-primary)',
+          },
+        }}
+      />
+    </BrowserRouter>
+  )
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <div className="flex min-h-screen bg-[#0e0e10]">
-          <Sidebar />
-          <main className="flex-1 overflow-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/rules" element={<Rules />} />
-              <Route path="/rules/new" element={<AddRule />} />
-              <Route path="/rules/:id/edit" element={<EditRule />} />
-              <Route path="/stats" element={<Stats />} />
-            </Routes>
-          </main>
-        </div>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#18181b',
-              border: '1px solid #2d2d32',
-              color: '#fafafa',
-            },
-          }}
-        />
-      </BrowserRouter>
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

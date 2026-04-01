@@ -117,13 +117,6 @@ export function Rules() {
           <h1 className="text-xl font-semibold text-zinc-100">App Rules</h1>
           <p className="text-sm text-zinc-500 mt-0.5">Manage your application lock rules</p>
         </div>
-        <button
-          onClick={() => navigate('/rules/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-900 rounded font-semibold text-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Rule
-        </button>
       </div>
 
       <div className="flex-1 p-8">
@@ -137,7 +130,7 @@ export function Rules() {
             <p className="text-zinc-400 mb-2">No rules yet — add your first app</p>
             <button
               onClick={() => navigate('/rules/new')}
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-900 rounded font-semibold text-sm transition-colors mx-auto"
+              className="mt-4 flex items-center gap-2 px-4 py-2 rounded font-semibold text-sm transition-colors mx-auto accent-btn"
             >
               <Plus className="w-4 h-4" />
               Add Rule
@@ -198,9 +191,10 @@ export function Rules() {
                       aria-checked={rule.enabled}
                       onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
                       disabled={toggleMutation.isPending}
-                      className={`relative w-10 h-5.5 rounded-full transition-colors outline-none focus:ring-2 focus:ring-cyan-500/50 ${
-                        rule.enabled ? 'bg-cyan-500' : 'bg-zinc-700'
-                      }`}
+                      className="relative w-10 rounded-full transition-colors outline-none focus:ring-2 rule-toggle"
+                      style={{
+                        backgroundColor: rule.enabled ? 'var(--accent)' : 'var(--border)',
+                      }}
                       style={{ height: '22px' }}
                       title={rule.enabled ? 'Disable rule' : 'Enable rule'}
                     >

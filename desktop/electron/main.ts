@@ -169,7 +169,7 @@ function createWindow(): void {
     show: false,
     title: 'AppLocker',
     autoHideMenuBar: true,
-    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

@@ -3,6 +3,7 @@ import { LayoutDashboard, BookOpen, BarChart2, Shield, Wifi, WifiOff } from 'luc
 import { useQuery } from '@tanstack/react-query'
 import { getStatus } from '../../api/client'
 import { cn } from '../../lib/utils'
+import { ThemeToggle } from '../ThemeToggle'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -22,19 +23,33 @@ export function Sidebar() {
   const serviceRunning = !isError && statusData?.service?.status === 'running'
 
   return (
-    <aside className="w-[220px] shrink-0 h-screen flex flex-col bg-[#18181b] border-r border-zinc-800 sticky top-0">
+    <aside
+      className="w-[220px] shrink-0 h-full flex flex-col"
+      style={{
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
+        transition: 'background 0.25s ease, border-color 0.25s ease',
+      }}
+    >
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-zinc-800">
+      <div className="px-4 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2.5">
-          <Shield className="w-5 h-5 text-cyan-400" />
-          <span className="font-semibold text-zinc-100 tracking-tight">AppLocker</span>
+          <Shield className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+          <span className="font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            AppLocker
+          </span>
         </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 p-3 flex flex-col gap-0.5">
         <div className="px-2 py-1 mb-1">
-          <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Navigation</span>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            Navigation
+          </span>
         </div>
         {navItems.map(item => (
           <NavLink
@@ -44,41 +59,77 @@ export function Sidebar() {
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
+                isActive ? 'nav-item-active' : 'nav-item-inactive'
               )
+            }
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: 'var(--accent-dim)',
+                    color: 'var(--accent)',
+                    border: '1px solid var(--accent-border)',
+                  }
+                : {
+                    color: 'var(--text-muted)',
+                    border: '1px solid transparent',
+                  }
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className={cn('w-4 h-4', isActive ? 'text-cyan-400' : 'text-zinc-500')} />
-                {item.label}
+                <item.icon
+                  className="w-4 h-4"
+                  style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}
+                />
+                <span style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {item.label}
+                </span>
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
+      {/* Theme toggle */}
+      <div className="px-4 pb-3" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        <div className="mb-2">
+          <span
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            Appearance
+          </span>
+        </div>
+        <ThemeToggle />
+      </div>
+
       {/* Footer — service status */}
-      <div className="p-4 border-t border-zinc-800">
+      <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
         <div className="flex items-center gap-2">
           {serviceRunning ? (
             <>
-              <Wifi className="w-3.5 h-3.5 text-green-500" />
-              <span className="text-xs text-zinc-400">Service: </span>
-              <span className="text-xs text-green-400 font-medium">Running</span>
+              <Wifi className="w-3.5 h-3.5" style={{ color: 'var(--green)' }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Service:{' '}
+              </span>
+              <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>
+                Running
+              </span>
             </>
           ) : (
             <>
-              <WifiOff className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-xs text-zinc-400">Service: </span>
-              <span className="text-xs text-red-400 font-medium">Down</span>
+              <WifiOff className="w-3.5 h-3.5" style={{ color: 'var(--red)' }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Service:{' '}
+              </span>
+              <span className="text-xs font-medium" style={{ color: 'var(--red)' }}>
+                Down
+              </span>
             </>
           )}
         </div>
         {statusData?.service && (
-          <div className="mt-1 text-[10px] text-zinc-600 font-mono">
+          <div className="mt-1 text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
             v{statusData.service.version}
           </div>
         )}

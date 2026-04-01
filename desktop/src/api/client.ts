@@ -96,7 +96,9 @@ function mapOverride(o: Record<string, unknown>): Override {
 // ─── Status ──────────────────────────────────────────────────────────────────
 
 export async function getStatus(): Promise<StatusResponse> {
+  console.log('[Client] Fetching status via IPC...')
   const raw = (await window.api.getStatus()) as Record<string, unknown>
+  console.log('[Client] Raw status response:', raw)
 
   const svc = (raw.service ?? {}) as Record<string, unknown>
   const rules = Array.isArray(raw.rules) ? raw.rules as Array<Record<string, unknown>> : []

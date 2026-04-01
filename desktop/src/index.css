@@ -1,45 +1,151 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0e0e10;
-  --surface: #18181b;
-  --surface-2: #1f1f23;
-  --border: #2d2d32;
-  --text-primary: #fafafa;
-  --text-muted: #71717a;
-  --accent-cyan: #22d3ee;
-  --accent-amber: #f59e0b;
+/* ── Dark theme (default) ─────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --background: #202023;
+  --surface: #2a2a2d;
+  --surface-2: #313135;
+  --border: #3a3a3e;
+  --text-primary: #e8e4f0;
+  --text-muted: #a8a4b8;
+  --accent: #8aebff;
+  --accent-dim: rgba(138, 235, 255, 0.1);
+  --accent-border: rgba(138, 235, 255, 0.2);
   --red: #ef4444;
   --green: #22c55e;
+  --accent-amber: #f59e0b;
 }
 
+/* ── Light theme ──────────────────────────────────────────── */
+[data-theme="light"] {
+  --background: #fdf6e8;
+  --surface: #f5edda;
+  --surface-2: #ede4ce;
+  --border: #d4c4a0;
+  --text-primary: #2c2416;
+  --text-muted: #6b5c3e;
+  --accent: #b87333;
+  --accent-dim: rgba(184, 115, 51, 0.1);
+  --accent-border: rgba(184, 115, 51, 0.2);
+  --red: #c0392b;
+  --green: #27ae60;
+  --accent-amber: #d97706;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
 
 body {
-  background-color: #0e0e10;
-  color: #fafafa;
+  background-color: var(--background);
+  color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   margin: 0;
   padding: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .font-mono {
   font-family: 'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* Scrollbar */
+/* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--surface);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2d2d32;
+  background: var(--border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3d3d42;
+  background: var(--text-muted);
 }
+
+/* ── Accent button ────────────────────────────────────────── */
+.accent-btn {
+  background-color: var(--accent);
+  color: var(--background);
+  cursor: pointer;
+}
+.accent-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* ── Rule toggle switch ───────────────────────────────────── */
+.rule-toggle {
+  height: 22px;
+}
+
+/* ── Nav item hover ───────────────────────────────────────── */
+.nav-item-inactive:hover {
+  background-color: var(--surface-2);
+  color: var(--text-primary) !important;
+}
+.nav-item-inactive:hover span,
+.nav-item-inactive:hover svg {
+  color: var(--text-primary) !important;
+}
+
+/* ── Light mode: override hardcoded dark Tailwind classes ─── */
+
+/* Arbitrary background values */
+[data-theme="light"] .bg-\[\#0e0e10\] { background-color: var(--background) !important; }
+[data-theme="light"] .bg-\[\#18181b\] { background-color: var(--surface) !important; }
+[data-theme="light"] .bg-\[\#1f1f23\] { background-color: var(--surface-2) !important; }
+
+/* Zinc backgrounds */
+[data-theme="light"] .bg-zinc-800,
+[data-theme="light"] .bg-zinc-900 { background-color: var(--surface-2) !important; }
+[data-theme="light"] .hover\:bg-zinc-800:hover { background-color: var(--surface-2) !important; }
+
+/* Zinc borders */
+[data-theme="light"] .border-zinc-800,
+[data-theme="light"] .border-zinc-700 { border-color: var(--border) !important; }
+[data-theme="light"] .divide-zinc-800 > * + * { border-color: var(--border) !important; }
+
+/* Zinc text — map dark grays to warm browns */
+[data-theme="light"] .text-zinc-100 { color: var(--text-primary) !important; }
+[data-theme="light"] .text-zinc-200 { color: var(--text-primary) !important; }
+[data-theme="light"] .text-zinc-300 { color: var(--text-primary) !important; }
+[data-theme="light"] .text-zinc-400 { color: var(--text-muted) !important; }
+[data-theme="light"] .text-zinc-500 { color: var(--text-muted) !important; }
+[data-theme="light"] .text-zinc-600 { color: var(--text-muted) !important; }
+[data-theme="light"] .hover\:text-zinc-100:hover { color: var(--text-primary) !important; }
+
+/* Cyan → copper accent */
+[data-theme="light"] .text-cyan-400,
+[data-theme="light"] .text-cyan-500 { color: var(--accent) !important; }
+[data-theme="light"] .bg-cyan-500\/10 { background-color: var(--accent-dim) !important; }
+[data-theme="light"] .border-cyan-500\/20 { border-color: var(--accent-border) !important; }
+
+/* Service status banner */
+[data-theme="light"] .bg-amber-500\/10 { background-color: rgba(217, 119, 6, 0.1) !important; }
+[data-theme="light"] .border-amber-500\/20 { border-color: rgba(217, 119, 6, 0.2) !important; }
+[data-theme="light"] .text-amber-400 { color: var(--accent-amber) !important; }
+
+/* Locked-rule red tones — keep red semantic meaning, slight warmth */
+[data-theme="light"] .bg-red-500\/5 { background-color: rgba(192, 57, 43, 0.05) !important; }
+[data-theme="light"] .bg-red-500\/20 { background-color: rgba(192, 57, 43, 0.12) !important; }
+[data-theme="light"] .border-red-500\/10 { border-color: rgba(192, 57, 43, 0.15) !important; }
+[data-theme="light"] .border-red-500\/30 { border-color: rgba(192, 57, 43, 0.3) !important; }
+[data-theme="light"] .text-red-400 { color: var(--red) !important; }
+[data-theme="light"] .text-red-500 { color: var(--red) !important; }
+
+/* Green status — keep legible on light bg */
+[data-theme="light"] .bg-green-500\/20 { background-color: rgba(39, 174, 96, 0.12) !important; }
+[data-theme="light"] .border-green-500\/30 { border-color: rgba(39, 174, 96, 0.3) !important; }
+[data-theme="light"] .text-green-400,
+[data-theme="light"] .text-green-500 { color: var(--green) !important; }
+[data-theme="light"] .text-green-400\/40 { color: rgba(39, 174, 96, 0.4) !important; }
+
+/* Disabled badge */
+[data-theme="light"] .bg-zinc-500\/20 { background-color: rgba(107, 92, 62, 0.1) !important; }
+[data-theme="light"] .border-zinc-500\/30 { border-color: rgba(107, 92, 62, 0.25) !important; }
+
+/* Usage bar track */
+[data-theme="light"] .bg-zinc-800\/60 { background-color: rgba(212, 196, 160, 0.6) !important; }

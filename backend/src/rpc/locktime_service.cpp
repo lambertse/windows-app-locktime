@@ -122,10 +122,6 @@ LockTimeService::LockTimeService(
 
 std::pair<std::string, std::error_code> LockTimeService::handle_get_status(
     const std::string& payload) {
-  // Debug log:
-  std::cout << "Received GetStatus request with payload: " << payload
-            << std::endl;
-  //
   ::locktime::rpc::GetStatusRequest req;
   if (!req.ParseFromString(payload)) return {{}, serial_err()};
 

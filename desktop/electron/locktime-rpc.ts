@@ -68,6 +68,7 @@ export class LockTimeRPCClient {
 
   constructor(endpoint: string = RPC_ENDPOINT) {
     this.client = new IBridgerClient({ endpoint, defaultTimeout: 10_000 })
+    console.log(`LockTimeRPCClient initialized with endpoint: ${endpoint}`)
   }
 
   async connect(): Promise<void> {
@@ -101,13 +102,17 @@ export class LockTimeRPCClient {
     const reqMsg = reqType.create(request)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.log(`RPC ${method} request:`, reqMsg)
     const respMsg = await this.client.call(SVC, method, reqMsg, reqType as any, respType as any)
+    console.log(`RPC ${method} response:`, respMsg)
+
     return respMsg as unknown as T
   }
 
   // ─── Status ──────────────────────────────────────────────────────────────
 
   getStatus() {
+    console.log('RPC getStatus called')
     return this.call<GetStatusResponse>('GetStatus', 'GetStatusRequest', 'GetStatusResponse', {})
   }
 
