@@ -172,13 +172,16 @@ export async function updateRule(id: string, payload: RulePayload): Promise<Rule
 }
 
 export async function patchRule(id: string, patch: RulePatchPayload): Promise<Rule> {
+  // protobufjs encodes using camelCase field names (snake_case proto fields are
+  // converted automatically). has_enabled → hasEnabled, has_name → hasName.
   const req = {
     id,
-    has_enabled: patch.enabled !== undefined,
-    enabled:     patch.enabled ?? false,
-    has_name:    patch.name !== undefined,
-    name:        patch.name ?? '',
+    hasEnabled: patch.enabled !== undefined,
+    enabled:    patch.enabled ?? false,
+    hasName:    patch.name !== undefined,
+    name:       patch.name ?? '',
   }
+  console.log('[Client] Patching rule via IPC with payload:', req)
   const raw = (await window.api.patchRule(req)) as Record<string, unknown>
   return mapRule((raw.rule ?? raw) as Record<string, unknown>)
 }

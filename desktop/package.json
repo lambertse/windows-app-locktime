@@ -24,7 +24,7 @@
     "dist:mac:ci": "npm run generate-proto && npm run build && electron-builder --mac --publish always"
   },
   "dependencies": {
-    "@lambertse/ibridger": "^0.1.0",
+    "@lambertse/ibridger": "^0.3.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

@@ -68,7 +68,14 @@ export class LockTimeRPCClient {
   private root: protobuf.Root | null = null
 
   constructor(endpoint: string = RPC_ENDPOINT) {
-    this.client = new IBridgerClient({ endpoint, defaultTimeout: 10_000 })
+    this.client = new IBridgerClient(
+      { endpoint },
+      { baseDelayMs: 200, maxDelayMs: 10_000, maxAttempts: Infinity,
+        onReconnect: () => log.info('RPC client reconnected') },
+    );
+    this.client.onDisconnect = () => {
+      log.warn('RPC client disconnected — will reconnect automatically')
+    }
     log.info(`RPC client created — endpoint: ${endpoint}`)
   }
 
@@ -133,6 +140,7 @@ export class LockTimeRPCClient {
   }
 
   patchRule(req: PatchRuleRequest) {
+    console.log('Patching rule:', req)
     return this.call<PatchRuleResponse>('PatchRule', 'PatchRuleRequest', 'PatchRuleResponse', req)
   }
 
@@ -220,9 +228,9 @@ export interface UpdateRuleRequest extends CreateRuleRequest {
 
 export interface PatchRuleRequest {
   id: string
-  has_enabled?: boolean
+  hasEnabled?: boolean
   enabled?: boolean
-  has_name?: boolean
+  hasName?: boolean
   name?: string
 }
 

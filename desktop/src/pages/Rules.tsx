@@ -74,6 +74,7 @@ export function Rules() {
       patchRule(id, { enabled }),
     onMutate: async ({ id, enabled }) => {
       // Optimistic update
+      console.log(`Optimistically setting rule ${id} enabled=${enabled}`)
       await queryClient.cancelQueries({ queryKey: ['rules'] })
       const prev = queryClient.getQueryData<Rule[]>(['rules'])
       queryClient.setQueryData<Rule[]>(['rules'], old =>
@@ -191,15 +192,15 @@ export function Rules() {
                       aria-checked={rule.enabled}
                       onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
                       disabled={toggleMutation.isPending}
-                      className="relative w-10 rounded-full transition-colors outline-none focus:ring-2 rule-toggle"
+                      className="relative w-10 overflow-hidden rounded-full transition-colors outline-none focus:ring-2 rule-toggle"
                       style={{
+                        height: '22px',
                         backgroundColor: rule.enabled ? 'var(--accent)' : 'var(--border)',
                       }}
-                      style={{ height: '22px' }}
                       title={rule.enabled ? 'Disable rule' : 'Enable rule'}
                     >
                       <span
-                        className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        className={`absolute left-0 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                           rule.enabled ? 'translate-x-5' : 'translate-x-0.5'
                         }`}
                       />

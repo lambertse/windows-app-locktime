@@ -233,8 +233,12 @@ ipcMain.on('window:quit',     () => app.quit())
 function rpcHandler<T>(fn: () => Promise<T>) {
   return async (): Promise<T | { __error: string }> => {
     try {
-      // Reconnect if the client dropped (e.g. service restarted)
-      if (!rpc.isConnected) await rpc.connect()
+      // Fail fast when disconnected — IBridgerClient reconnects automatically
+      // in the background (maxAttempts: Infinity, exponential backoff).
+      // Awaiting connect() here would block all overlapping interval calls.
+      if (!rpc.isConnected) {
+        return { __error: 'Service unavailable — reconnecting…' }
+      }
       return await fn()
     } catch (err) {
       log.error(`RPC error: ${err instanceof Error ? err.message : String(err)}`)

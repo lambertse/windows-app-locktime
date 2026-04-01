@@ -31,7 +31,8 @@ static std::error_code serial_err() {
 }
 
 static std::error_code not_found_err() {
-  return ibridger::common::make_error_code(ibridger::common::Error::not_found);
+  return ibridger::common::make_error_code(
+      ibridger::common::Error::not_connected);
 }
 
 // Fill a proto Schedule from internal Schedule
@@ -122,6 +123,7 @@ LockTimeService::LockTimeService(
 
 std::pair<std::string, std::error_code> LockTimeService::handle_get_status(
     const std::string& payload) {
+  logger::log_info("handling GetStatus request");
   ::locktime::rpc::GetStatusRequest req;
   if (!req.ParseFromString(payload)) return {{}, serial_err()};
 
