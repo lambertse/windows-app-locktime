@@ -53,6 +53,21 @@ declare global {
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// proto3 omits fields equal to their default value from the wire:
+//   bool   → false is omitted  (absent means false, NOT true)
+//   int64  → 0 is omitted; protobufjs decodes int64 as a Long object when the
+//             value is non-zero, so we must handle both number and Long.
+function longToNumber(v: unknown): number {
+  if (typeof v === 'number') return v
+  if (v !== null && typeof v === 'object' && 'low' in v) {
+    const { low, high } = v as { low: number; high: number }
+    return high * 0x100000000 + (low >>> 0)
+  }
+  return 0
+}
+
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
 // Proto field names are snake_case (--keep-case), matching the app's domain
 // types directly.  Mapping only normalises optional/nullable proto fields to
@@ -65,7 +80,8 @@ function mapRule(r: pb.locktime.rpc.IRule): Rule {
     exe_name: r.exe_name ?? '',
     exe_path: r.exe_path || null,
     match_mode: (r.match_mode as Rule['match_mode']) ?? 'name',
-    enabled: r.enabled ?? true,
+    // proto3: absent bool means false (the default) — never default to true
+    enabled: r.enabled ?? false,
     daily_limit_minutes: r.daily_limit_minutes || null,
     schedules: (r.schedules ?? []).map(mapSchedule),
     created_at: r.created_at ?? '',
@@ -98,24 +114,23 @@ function mapOverride(o: pb.locktime.rpc.IGrantOverrideResponse): Override {
 // ─── Status ──────────────────────────────────────────────────────────────────
 
 export async function getStatus(): Promise<StatusResponse> {
-  console.log('[Client] Fetching status via IPC...')
   const raw = (await window.api.getStatus()) as pb.locktime.rpc.IGetStatusResponse
-  console.log('[Client] Raw status response:', raw)
+  console.log('[Client] Fetched status via IPC:', raw)
 
   const svc = raw.service ?? {}
   return {
     service: {
       status: svc.status ?? 'running',
       version: svc.version ?? '',
-      uptime_seconds: Number(svc.uptime_seconds ?? 0),
-      time_synced: svc.time_synced ?? true,
-      ntp_offset_ms: Number(svc.ntp_offset_ms ?? 0),
+      uptime_seconds: longToNumber(svc.uptime_seconds),
+      time_synced: svc.time_synced ?? false,
+      ntp_offset_ms: longToNumber(svc.ntp_offset_ms),
     },
     rules: (raw.rules ?? []).map((r) => ({
       rule_id: r.rule_id ?? '',
       rule_name: r.rule_name ?? '',
       exe_name: r.exe_name ?? '',
-      enabled: r.enabled ?? true,
+      enabled: r.enabled ?? false,
       status: (r.status as 'locked' | 'active' | 'disabled') ?? 'disabled',
       reason: r.reason || null,
       blocked_since: r.blocked_since || null,
@@ -133,11 +148,13 @@ export async function getStatus(): Promise<StatusResponse> {
 
 export async function getRules(): Promise<Rule[]> {
   const raw = (await window.api.listRules()) as pb.locktime.rpc.IListRulesResponse
+  console.log('[Client] Fetched rules via IPC:', raw)
   return (raw.rules ?? []).map(mapRule)
 }
 
 export async function getRule(id: string): Promise<Rule> {
   const raw = (await window.api.getRule(id)) as pb.locktime.rpc.IGetRuleResponse
+  console.log(`[Client] Fetched rule ${id} via IPC:`, raw)
   return mapRule(raw.rule ?? {})
 }
 

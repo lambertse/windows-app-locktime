@@ -354,8 +354,8 @@ public:
   std::optional<Rule> get_rule_by_id(const std::string& id);
   void create_rule(const Rule& r);
   void update_rule(const Rule& r);
-  void patch_rule(const std::string& id, bool has_enabled, bool enabled,
-                  bool has_name, const std::string& name);
+  void patch_rule(const std::string& id, bool hasEnabled, bool enabled,
+                  bool hasName, const std::string& name);
   void delete_rule(const std::string& id);
   void set_rule_ifeo_active(const std::string& id, bool active);
 

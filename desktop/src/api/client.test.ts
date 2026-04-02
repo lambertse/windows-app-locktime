@@ -129,6 +129,14 @@ describe('getRules — response mapping', () => {
     const [rule] = await getRules()
     expect(rule.daily_limit_minutes).toBeNull()
   })
+
+  it('treats absent enabled as false (proto3 default omission)', async () => {
+    // proto3 omits bool fields equal to false — absent must not become true
+    const { enabled: _enabled, ...ruleWithoutEnabled } = protoRule
+    mockApi.listRules.mockResolvedValue({ rules: [ruleWithoutEnabled] })
+    const [rule] = await getRules()
+    expect(rule.enabled).toBe(false)
+  })
 })
 
 describe('getRule', () => {
@@ -285,6 +293,24 @@ describe('getStatus — response mapping', () => {
     mockApi.getStatus.mockResolvedValue({ service: {} })
     const { rules } = await getStatus()
     expect(rules).toEqual([])
+  })
+
+  it('converts int64 Long object for uptime_seconds', async () => {
+    // protobufjs decodes int64 as a Long object when transmitted over IPC
+    mockApi.getStatus.mockResolvedValue({
+      service: { uptime_seconds: { low: 55, high: 0, unsigned: false } },
+    })
+    const { service } = await getStatus()
+    expect(service.uptime_seconds).toBe(55)
+  })
+
+  it('treats absent enabled in RuleStatusEntry as false', async () => {
+    mockApi.getStatus.mockResolvedValue({
+      service: {},
+      rules: [{ rule_id: 'r1', rule_name: 'X', exe_name: 'x.exe', status: 'disabled' }],
+    })
+    const { rules } = await getStatus()
+    expect(rules[0].enabled).toBe(false)
   })
 })
 
