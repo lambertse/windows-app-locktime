@@ -12,8 +12,10 @@ endif()
 
 
 # -- Local definition --
-if(LOCAL_TEST)
-    add_compile_definitions(LOCAL_TEST)
+if(BUILD_DEVELOPMENT)
+  add_compile_definitions(BUILD_DEVELOPMENT)
+else()
+  add_compile_definitions(BUILD_PRODUCTION)
 endif()
 #
 

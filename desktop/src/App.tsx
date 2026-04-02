@@ -9,6 +9,10 @@ import { Rules } from './pages/Rules'
 import { AddRule } from './pages/AddRule'
 import { EditRule } from './pages/EditRule'
 import { Stats } from './pages/Stats'
+import { BlockedPopup } from './pages/BlockedPopup'
+
+// Detected once at load time — popup windows are opened at #/popup?...
+const isPopupMode = window.location.hash.startsWith('#/popup')
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +25,16 @@ const queryClient = new QueryClient({
 
 function AppShell() {
   const { theme } = useTheme()
+
+  if (isPopupMode) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/popup" element={<BlockedPopup />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
 
   return (
     <BrowserRouter>

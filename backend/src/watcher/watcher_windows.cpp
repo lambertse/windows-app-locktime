@@ -126,6 +126,67 @@ void Watcher::terminate_process(int pid) {
   }
 }
 
+// ── notify_locked_app_to_UI
+// ──────────────────────────────────────────────────
+//
+// Spawns AppLocker.exe --popup so the user sees a styled notification.
+// locktime-svc.exe is at: <install>\resources\bin\locktime-svc.exe
+// AppLocker.exe is at:    <install>\AppLocker.exe  (three levels up)
+//
+// If AppLocker is already running its single-instance lock will forward the
+// --popup argv to the live process via the second-instance event, so only
+// one Electron process ever handles the popup.  If it is not running a fresh
+// instance starts in popup-only mode and quits when the user dismisses it.
+
+void Watcher::notify_locked_app_to_UI(const std::string& exe_name,
+                                      const std::string& rule_name,
+                                      const std::string& reason,
+                                      const std::string& next_unlock_time) {
+  wchar_t self_path[MAX_PATH] = {};
+  GetModuleFileNameW(nullptr, self_path, MAX_PATH);
+  std::wstring install_dir(self_path);
+  for (int up = 0; up < 3; ++up) {
+    auto sep = install_dir.rfind(L'\\');
+    if (sep == std::wstring::npos) break;
+    install_dir = install_dir.substr(0, sep);
+  }
+  std::wstring electron_exe = install_dir + L"\\AppLocker.exe";
+
+  auto to_wide = [](const std::string& s) -> std::wstring {
+    if (s.empty()) return {};
+    int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
+    std::wstring w(static_cast<std::size_t>(n), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, w.data(), n);
+    if (!w.empty() && w.back() == L'\0') w.pop_back();
+    return w;
+  };
+
+  auto quoted_arg = [](const wchar_t* flag,
+                       const std::wstring& val) -> std::wstring {
+    if (val.empty()) return {};
+    return std::wstring(L" \"") + flag + L"=" + val + L"\"";
+  };
+
+  std::wstring cmd = L"\"" + electron_exe + L"\" --popup";
+  cmd += quoted_arg(L"--app-name", to_wide(exe_name));
+  cmd += quoted_arg(L"--rule-name", to_wide(rule_name));
+  cmd += quoted_arg(L"--reason", to_wide(reason));
+  cmd += quoted_arg(L"--next-unlock", to_wide(next_unlock_time));
+
+  STARTUPINFOW si{};
+  si.cb = sizeof(si);
+  PROCESS_INFORMATION pi{};
+  if (CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE,
+                     DETACHED_PROCESS, nullptr, nullptr, &si, &pi)) {
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+  } else {
+    logger::log_warning(
+        "notify_locked_app_to_UI: failed to spawn AppLocker.exe (err={})",
+        GetLastError());
+  }
+}
+
 // ── poll_loop
 // ─────────────────────────────────────────────────────────────────
 
@@ -193,6 +254,12 @@ void Watcher::reconcile(const std::vector<ProcessEntry>& procs,
     } else if (status.status == "locked") {
       // App should be blocked — terminate if running.
       if (is_running) {
+        std::string next_unlock_str;
+        if (status.next_unlock_at) {
+          next_unlock_str = utils::format_iso8601(*status.next_unlock_at);
+        }
+        notify_locked_app_to_UI(rule.exe_name, rule.name, status.reason,
+                                next_unlock_str);
         terminate_process(pid);
         db_->insert_audit(
             "watcher_kill", rule.id,

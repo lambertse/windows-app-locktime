@@ -13,7 +13,7 @@ constexpr const char* kDefaultLogFile =
 #else
 constexpr const char* kRpcEndpoint = "/tmp/locktime-svc.sock";
 
-#ifdef LOCAL_TEST
+#ifdef BUILD_DEVELOPMENT
 constexpr const char* kDbPath = "/tmp/AppLocker/applocker.db";
 #else
 constexpr const char* kDbPath =

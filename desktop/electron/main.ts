@@ -20,6 +20,69 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 
+// ─── Popup mode ───────────────────────────────────────────────────────────────
+
+interface PopupArgs {
+  isPopup: true
+  appName: string
+  ruleName: string
+  reason: string
+  nextUnlock: string
+}
+
+function parsePopupArgs(argv: string[]): PopupArgs | null {
+  if (!argv.includes('--popup')) return null
+  const get = (flag: string) => {
+    const prefix = `${flag}=`
+    const hit = argv.find((a) => a.startsWith(prefix))
+    return hit ? hit.slice(prefix.length) : ''
+  }
+  return {
+    isPopup: true,
+    appName: get('--app-name'),
+    ruleName: get('--rule-name'),
+    reason: get('--reason'),
+    nextUnlock: get('--next-unlock'),
+  }
+}
+
+function createPopupWindow(info: PopupArgs): void {
+  const popup = new BrowserWindow({
+    width: 440,
+    height: 140,
+    resizable: false,
+    alwaysOnTop: true,
+    frame: false,
+    skipTaskbar: true,
+    center: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  const params = new URLSearchParams({
+    app: info.appName,
+    rule: info.ruleName,
+    reason: info.reason,
+    unlock: info.nextUnlock,
+  })
+  const hash = `/popup?${params.toString()}`
+
+  if (isDev) {
+    popup.loadURL(`${process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:8090'}#${hash}`)
+  } else {
+    popup.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { hash })
+  }
+
+  log.info(`Popup window created for app="${info.appName}" rule="${info.ruleName}"`)
+}
+
+const popupArgs = parsePopupArgs(process.argv)
+
 // ─── RPC Client ──────────────────────────────────────────────────────────────
 const rpc = new LockTimeRPCClient(RPC_ENDPOINT)
 // ─── Service Management ──────────────────────────────────────────────────────
@@ -101,17 +164,22 @@ async function ensureServiceRunning(): Promise<void> {
 
 // ─── Single Instance ─────────────────────────────────────────────────────────
 
-const gotLock = app.requestSingleInstanceLock()
+const gotLock = app.requestSingleInstanceLock(popupArgs ?? {})
 if (!gotLock) {
   app.quit()
   process.exit(0)
 }
 
-app.on('second-instance', () => {
-  if (mainWindow) {
-    if (!mainWindow.isVisible()) mainWindow.show()
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
+app.on('second-instance', (_event, _argv, _workingDir, additionalData) => {
+  const data = additionalData as Record<string, unknown>
+  if (data?.isPopup) {
+    createPopupWindow(data as unknown as PopupArgs)
+  } else {
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) mainWindow.show()
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
   }
 })
 
@@ -222,6 +290,10 @@ function createWindow(): void {
 ipcMain.on('window:minimize', () => mainWindow?.minimize())
 ipcMain.on('window:hide', () => mainWindow?.hide())
 ipcMain.on('window:quit', () => app.quit())
+
+ipcMain.on('popup:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close()
+})
 
 // ─── IPC — RPC Bridge ────────────────────────────────────────────────────────
 // Each handler calls the C++ backend via iBridger and returns the result to the
@@ -348,9 +420,18 @@ ipcMain.on('log:write', (_e, level: string, message: string) => {
 
 app.whenReady().then(async () => {
   app.setName('AppLocker')
-  app.setLoginItemSettings({ openAtLogin: false, name: 'AppLocker' })
-
   await initLogger()
+
+  if (popupArgs) {
+    // Popup-only mode: no service connection, no tray, no main window.
+    // The process quits automatically when the popup window is closed
+    // (handled by window-all-closed below).
+    log.info(`AppLocker starting in popup mode — app="${popupArgs.appName}"`)
+    createPopupWindow(popupArgs)
+    return
+  }
+
+  app.setLoginItemSettings({ openAtLogin: false, name: 'AppLocker' })
   log.info(`AppLocker starting — platform=${process.platform} dev=${isDev}`)
   log.info(`RPC endpoint: ${RPC_ENDPOINT}`)
 
@@ -376,5 +457,10 @@ app.on('before-quit', () => {
 })
 
 app.on('window-all-closed', () => {
-  // Stay in tray — do not quit
+  if (popupArgs) {
+    // Popup-only mode: quit when the popup is dismissed
+    app.quit()
+    return
+  }
+  // Normal mode: stay in tray — do not quit
 })

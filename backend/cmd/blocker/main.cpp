@@ -130,20 +130,60 @@ int WINAPI WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrev*/,
     return 0;
   }
 
-  // ── Show block message ─────────────────────────────────────────────────────
-  std::wstring msg = L"AppLocker blocked this application";
-  if (!rule_name.empty()) {
-    msg += L"\n\nRule: " + utf8_to_wide(rule_name);
+  // ── Show block popup via the Electron app ─────────────────────────────────
+  //
+  // blocker.exe lives at: <install>\resources\bin\blocker.exe
+  // AppLocker.exe lives at: <install>\AppLocker.exe
+  // Navigate three levels up from our own path.
+
+  wchar_t self_path[MAX_PATH] = {};
+  GetModuleFileNameW(nullptr, self_path, MAX_PATH);
+  std::wstring install_dir(self_path);
+  for (int up = 0; up < 3; ++up) {
+    auto sep = install_dir.rfind(L'\\');
+    if (sep == std::wstring::npos) break;
+    install_dir = install_dir.substr(0, sep);
   }
-  if (!block_reason.empty()) {
-    msg += L"\nReason: " + utf8_to_wide(block_reason);
-  }
-  if (!next_unlock.empty()) {
-    msg += L"\nAvailable from: " + utf8_to_wide(next_unlock);
+  std::wstring electron_exe = install_dir + L"\\AppLocker.exe";
+
+  // Extract just the exe filename (e.g. "chrome.exe") for display
+  std::wstring exe_name_w = utf8_to_wide(exe_path_utf8);
+  auto last_sep = exe_name_w.rfind(L'\\');
+  if (last_sep != std::wstring::npos)
+    exe_name_w = exe_name_w.substr(last_sep + 1);
+
+  // Build command line: each value-arg is quoted to handle spaces in names.
+  auto quoted_arg = [](const wchar_t* flag,
+                       const std::wstring& val) -> std::wstring {
+    if (val.empty()) return {};
+    return std::wstring(L" \"") + flag + L"=" + val + L"\"";
+  };
+
+  std::wstring cmd = L"\"" + electron_exe + L"\" --popup";
+  cmd += quoted_arg(L"--app-name", exe_name_w);
+  cmd += quoted_arg(L"--rule-name", utf8_to_wide(rule_name));
+  cmd += quoted_arg(L"--reason", utf8_to_wide(block_reason));
+  cmd += quoted_arg(L"--next-unlock", utf8_to_wide(next_unlock));
+
+  STARTUPINFOW si{};
+  si.cb = sizeof(si);
+  PROCESS_INFORMATION pi{};
+  if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE,
+                      DETACHED_PROCESS, nullptr, nullptr, &si, &pi)) {
+    // Fall back to a plain MessageBox if the Electron app is not found
+    std::wstring msg = L"AppLocker blocked this application";
+    if (!rule_name.empty()) msg += L"\n\nRule: " + utf8_to_wide(rule_name);
+    if (!block_reason.empty())
+      msg += L"\nReason: " + utf8_to_wide(block_reason);
+    if (!next_unlock.empty())
+      msg += L"\nAvailable from: " + utf8_to_wide(next_unlock);
+    MessageBoxW(nullptr, msg.c_str(), L"AppLocker",
+                MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+  } else {
+    if (pi.hProcess) CloseHandle(pi.hProcess);
+    if (pi.hThread) CloseHandle(pi.hThread);
   }
 
-  MessageBoxW(nullptr, msg.c_str(), L"AppLocker",
-              MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
   return 0;
 }
 

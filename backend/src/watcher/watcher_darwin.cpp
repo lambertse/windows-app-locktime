@@ -1,11 +1,15 @@
+#include <filesystem>
 #ifndef _WIN32
 #include <libproc.h>
+#include <mach-o/dyld.h>
 #include <signal.h>
+#include <spawn.h>
 #include <sys/proc_info.h>
 #include <sys/types.h>
 
 #include <chrono>
 #include <cstring>
+#include <iostream>
 #include <thread>
 
 #include "common/constants.h"
@@ -98,6 +102,77 @@ std::vector<ProcessEntry> Watcher::enumerate_processes() {
 
 void Watcher::terminate_process(int pid) { kill(pid, SIGTERM); }
 
+// ── notify_locked_app_to_UI
+// ──────────────────────────────────────────────────
+//
+// Spawns AppLocker (Electron) with --popup so the user sees a styled
+// notification.  locktime-svc is at:
+//   <app>.app/Contents/Resources/bin/locktime-svc
+// The Electron binary is at:
+//   <app>.app/Contents/MacOS/AppLocker
+// Navigate three levels up from our own path, then into MacOS/.
+//
+// Same single-instance logic applies as on Windows: if AppLocker is already
+// running it receives the popup via the second-instance event (1 process);
+// otherwise a fresh popup-only instance starts (2 processes).
+
+void Watcher::notify_locked_app_to_UI(const std::string& exe_name,
+                                      const std::string& rule_name,
+                                      const std::string& reason,
+                                      const std::string& next_unlock_time) {
+#ifdef BUILD_DEVELOPMENT
+  std::string electron_bin =
+      "/Users/tri.le/src/opensource/lambertse/app-locktime/desktop/release/"
+      "mac-arm64/AppLocker.app/Contents/MacOS/AppLocker";
+#else
+  char self_path[PATH_MAX] = {};
+  uint32_t size = sizeof(self_path);
+  if (_NSGetExecutablePath(self_path, &size) != 0) return;
+
+  std::string install_dir(self_path);
+  for (int up = 0; up < 3; ++up) {
+    auto sep = install_dir.rfind('/');
+    if (sep == std::string::npos) break;
+    install_dir = install_dir.substr(0, sep);
+  }
+  std::string electron_bin = install_dir + "/MacOS/AppLocker";
+#endif
+  // Build argv for posix_spawn — each value-arg is a single token.
+  auto make_arg = [](const std::string& flag,
+                     const std::string& val) -> std::string {
+    return flag + "=" + val;
+  };
+
+  std::vector<std::string> arg_storage;
+  arg_storage.push_back(electron_bin);
+  arg_storage.push_back("--popup");
+  if (!exe_name.empty())
+    arg_storage.push_back(make_arg("--app-name", exe_name));
+  if (!rule_name.empty())
+    arg_storage.push_back(make_arg("--rule-name", rule_name));
+  if (!reason.empty()) arg_storage.push_back(make_arg("--reason", reason));
+  if (!next_unlock_time.empty())
+    arg_storage.push_back(make_arg("--next-unlock", next_unlock_time));
+
+  std::vector<char*> argv;
+  for (auto& s : arg_storage) argv.push_back(const_cast<char*>(s.c_str()));
+  argv.push_back(nullptr);
+
+  pid_t child_pid = 0;
+  if (std::filesystem::exists(electron_bin)) {
+    std::cout << "Spawning Electron popup: " << electron_bin << std::endl;
+  } else {
+    std::cout << "Electron binary not found at: " << electron_bin << std::endl;
+    return;
+  }
+  // Pass nullptr for envp — child inherits the parent's environment.
+  int rc = posix_spawn(&child_pid, electron_bin.c_str(), nullptr, nullptr,
+                       argv.data(), nullptr);
+  if (rc != 0) {
+    logger::log_warning("notify_locked_app_to_UI: posix_spawn failed (rc={})",
+                        rc);
+  }
+}
 // ── poll_loop
 // ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +236,12 @@ void Watcher::reconcile(const std::vector<ProcessEntry>& procs,
       }
     } else if (status.status == "locked") {
       if (is_running) {
+        std::string next_unlock_str;
+        if (status.next_unlock_at) {
+          next_unlock_str = utils::format_iso8601(*status.next_unlock_at);
+        }
+        notify_locked_app_to_UI(rule.exe_name, rule.name, status.reason,
+                                next_unlock_str);
         terminate_process(pid);
         db_->insert_audit(
             "watcher_kill", rule.id,

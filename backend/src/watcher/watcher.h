@@ -48,6 +48,14 @@ class Watcher {
 
   /// Platform-specific: terminate a process.
   void terminate_process(int pid);
+
+  /// Platform-specific: spawn the Electron popup to inform the user their app
+  /// was blocked. Called before terminate_process so the notification appears
+  /// while the kill is in flight.
+  void notify_locked_app_to_UI(const std::string& exe_name,
+                               const std::string& rule_name,
+                               const std::string& reason,
+                               const std::string& next_unlock_time);
 };
 
 }  // namespace locktime
